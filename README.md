@@ -2,6 +2,8 @@
 
 A command-line assistant for zsh powered by GitHub Copilot. Describe what you want to do in plain English, and `how` generates the shell command for you — ready to execute or edit. When a command fails, `fix` suggests the corrected version.
 
+This project was created with respect and appreciation for [kazuho/how](https://github.com/kazuho/how). Inspired by that original work, this repository adapts the idea for GitHub Copilot CLI.
+
 ## Setup
 
 Add the following to your `.zshrc`:
