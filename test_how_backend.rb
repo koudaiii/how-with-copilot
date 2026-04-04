@@ -131,12 +131,40 @@ class TestPrivilegeContext < Minitest::Test
 end
 
 class TestCopilotCommand < Minitest::Test
+  def test_parse_copilot_jsonl
+    output = <<~JSONL
+      {"type":"assistant.message_delta","data":{"deltaContent":"ls "}}
+      {"type":"assistant.message_delta","data":{"deltaContent":"-la"}}
+      {"type":"result","exitCode":0}
+    JSONL
+
+    command, explanation = How.parse_copilot_jsonl(output)
+
+    assert_equal "ls -la", command
+    assert_equal "", explanation
+  end
+
+  def test_parse_copilot_jsonl_collects_errors
+    output = <<~JSONL
+      {"type":"session.error","data":{"message":"something failed"}}
+      {"type":"result","exitCode":1}
+    JSONL
+
+    command, explanation = How.parse_copilot_jsonl(output)
+
+    assert_equal "", command
+    assert_includes explanation, "something failed"
+    assert_includes explanation, "copilot exit code: 1"
+  end
+
   def test_returns_command_and_explanation
     status = Struct.new(:success?).new(true)
     capture3 = lambda do |*args|
-      output_path = args[args.index("--shell-out") + 1]
-      File.write(output_path, "ls -la\n")
-      ["explanation", "", status]
+      [
+        %({"type":"assistant.message_delta","data":{"deltaContent":"ls -la"}}\n{"type":"result","exitCode":0}\n),
+        "",
+        status
+      ]
     end
 
     Open3.stub :capture3, capture3 do
@@ -144,7 +172,7 @@ class TestCopilotCommand < Minitest::Test
 
       assert ok
       assert_equal "ls -la", command
-      assert_equal "explanation", explanation
+      assert_equal "", explanation
     end
   end
 end

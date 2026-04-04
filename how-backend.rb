@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "open3"
+require "json"
 require "tempfile"
 
 module How
@@ -151,16 +152,47 @@ module How
   end
 
   def copilot_command(prompt)
-    file = Tempfile.new("how-command")
-    begin
-      cmd = ["gh", "copilot", "suggest", "-t", "shell", "--shell-out", file.path, prompt]
-      stdout, stderr, status = Open3.capture3(*cmd)
-      explanation = [stdout, stderr].reject(&:empty?).join("\n").strip
-      [status.success?, File.read(file.path).strip, explanation]
-    ensure
-      file.close
-      file.unlink
+    cmd = [
+      "copilot",
+      "-p", prompt,
+      "--allow-all-tools",
+      "--output-format", "json",
+      "--no-custom-instructions",
+      "--silent"
+    ]
+
+    stdout, stderr, status = Open3.capture3(*cmd)
+    command, explanation = parse_copilot_jsonl(stdout)
+    [status.success?, command, [explanation, stderr].reject(&:empty?).join("\n").strip]
+  rescue Errno::ENOENT
+    [false, "", "how: `copilot` command not found"]
+  end
+
+  def parse_copilot_jsonl(output)
+    command_parts = []
+    diagnostics = []
+
+    output.each_line do |line|
+      line = line.strip
+      next if line.empty?
+
+      event = JSON.parse(line)
+      case event["type"]
+      when "assistant.message_delta"
+        command_parts << event.dig("data", "deltaContent").to_s
+      when "session.error"
+        diagnostics << event.dig("data", "message").to_s
+      when "session.warning", "session.info"
+        message = event.dig("data", "message").to_s
+        diagnostics << message unless message.empty?
+      when "result"
+        diagnostics << "copilot exit code: #{event["exitCode"]}" if event["exitCode"].to_i != 0
+      end
     end
+
+    [command_parts.join.strip, diagnostics.join("\n").strip]
+  rescue JSON::ParserError => e
+    ["", "how: failed to parse copilot output: #{e.message}"]
   end
 
   def generate(full_prompt)
@@ -168,13 +200,13 @@ module How
 
     unless ok
       $stderr.puts explanation unless explanation.empty?
-      $stderr.puts "how: gh copilot suggest failed"
+      $stderr.puts "how: copilot CLI failed"
       exit 1
     end
 
     if command.empty?
       $stderr.puts explanation unless explanation.empty?
-      $stderr.puts "how: no command returned by gh copilot suggest"
+      $stderr.puts "how: no command returned by copilot CLI"
       exit 1
     end
 

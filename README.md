@@ -15,9 +15,9 @@ source /path/to/how.zsh
 - zsh
 - Ruby
 - [GitHub CLI](https://cli.github.com/) (`gh` command)
-- [GitHub Copilot in the CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli) (`gh copilot` extension)
+- [GitHub Copilot CLI](https://github.com/github/copilot-cli) (`copilot` command)
 
-To install GitHub CLI and Copilot:
+To install GitHub CLI and Copilot CLI:
 
 ```bash
 # Install GitHub CLI
@@ -27,8 +27,9 @@ brew install gh  # macOS
 # Authenticate with GitHub
 gh auth login
 
-# Install GitHub Copilot extension
-gh extension install github/gh-copilot
+# Install GitHub Copilot CLI
+brew install copilot-cli
+# or: npm install -g @github/copilot
 ```
 
 ## Usage
@@ -69,7 +70,7 @@ git status             # ← appears at your prompt, ready to run
 
 This is a fork of [kazuho/how](https://github.com/kazuho/how) that uses GitHub Copilot instead of OpenAI Codex. The main differences are:
 
-- Uses `gh copilot suggest` command instead of `codex` CLI
+- Uses `copilot -p` in non-interactive JSON mode instead of `codex` CLI
 - Optimized prompts for GitHub Copilot's interface
 - No model selection (uses GitHub Copilot's default model)
 - Keeps the original `how` / `fix` workflow and shell-history integration
