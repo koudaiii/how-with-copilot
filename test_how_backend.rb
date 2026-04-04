@@ -176,3 +176,48 @@ class TestCopilotCommand < Minitest::Test
     end
   end
 end
+
+class TestSanitizeCommandOutput < Minitest::Test
+  def test_accepts_plain_command
+    assert_equal "ssh user@example.com", How.sanitize_command_output("ssh user@example.com")
+  end
+
+  def test_extracts_single_fenced_command
+    output = <<~TEXT
+      ```sh
+      ssh user@hostname
+      ```
+    TEXT
+
+    assert_equal "ssh user@hostname", How.sanitize_command_output(output)
+  end
+
+  def test_ignores_explanation_and_uses_command_line
+    output = <<~TEXT
+      Replace `user` with your username.
+      ssh user@hostname
+    TEXT
+
+    assert_equal "ssh user@hostname", How.sanitize_command_output(output)
+  end
+
+  def test_rejects_prose_only_output
+    assert_nil How.sanitize_command_output("Here is how to use ssh command.")
+  end
+
+  def test_prompt_mentions_no_markdown
+    prompt = How.build_how_prompt(cwd: "/tmp", prompt: "use ssh")
+    assert_includes prompt, "no explanation before or after it"
+    assert_includes prompt, "Do not include markdown fences"
+    assert_includes prompt, "usable command template with placeholders"
+  end
+
+  def test_prefers_template_over_bare_command_name
+    output = <<~TEXT
+      ssh
+      ssh <user>@<host>
+    TEXT
+
+    assert_equal "ssh <user>@<host>", How.sanitize_command_output(output)
+  end
+end
