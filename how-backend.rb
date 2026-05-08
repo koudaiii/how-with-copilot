@@ -9,6 +9,12 @@ module How
   module_function
 
   ITERM_APP_NAMES = ["iTerm2", "iTerm"].freeze
+  DEFAULT_MODEL = "gpt-5-mini"
+
+  def selected_model
+    value = ENV["HOW_MODEL"].to_s.strip
+    value.empty? ? DEFAULT_MODEL : value
+  end
 
   def shell_env
     shell = File.basename(ENV["SHELL"] || "sh")
@@ -159,6 +165,7 @@ module How
     cmd = [
       "copilot",
       "-p", prompt,
+      "--model", selected_model,
       "--allow-all-tools",
       "--output-format", "json",
       "--no-custom-instructions",

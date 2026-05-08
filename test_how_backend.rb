@@ -175,6 +175,84 @@ class TestCopilotCommand < Minitest::Test
       assert_equal "", explanation
     end
   end
+
+  def test_passes_model_flag_to_copilot
+    captured_args = nil
+    status = Struct.new(:success?).new(true)
+    capture3 = lambda do |*args|
+      captured_args = args
+      [%({"type":"result","exitCode":0}\n), "", status]
+    end
+
+    original_model = ENV.delete("HOW_MODEL")
+    Open3.stub :capture3, capture3 do
+      How.copilot_command("prompt")
+    end
+
+    assert_includes captured_args, "--model"
+    model_index = captured_args.index("--model")
+    assert_equal How::DEFAULT_MODEL, captured_args[model_index + 1]
+  ensure
+    ENV["HOW_MODEL"] = original_model if original_model
+  end
+
+  def test_passes_env_var_model_to_copilot
+    captured_args = nil
+    status = Struct.new(:success?).new(true)
+    capture3 = lambda do |*args|
+      captured_args = args
+      [%({"type":"result","exitCode":0}\n), "", status]
+    end
+
+    original_model = ENV["HOW_MODEL"]
+    ENV["HOW_MODEL"] = "gpt-4.1"
+    Open3.stub :capture3, capture3 do
+      How.copilot_command("prompt")
+    end
+
+    model_index = captured_args.index("--model")
+    assert_equal "gpt-4.1", captured_args[model_index + 1]
+  ensure
+    ENV["HOW_MODEL"] = original_model
+  end
+end
+
+class TestSelectedModel < Minitest::Test
+  def test_default_when_env_unset
+    original = ENV.delete("HOW_MODEL")
+    assert_equal How::DEFAULT_MODEL, How.selected_model
+  ensure
+    ENV["HOW_MODEL"] = original if original
+  end
+
+  def test_default_when_env_empty
+    original = ENV["HOW_MODEL"]
+    ENV["HOW_MODEL"] = ""
+    assert_equal How::DEFAULT_MODEL, How.selected_model
+  ensure
+    ENV["HOW_MODEL"] = original
+  end
+
+  def test_default_when_env_whitespace
+    original = ENV["HOW_MODEL"]
+    ENV["HOW_MODEL"] = "   "
+    assert_equal How::DEFAULT_MODEL, How.selected_model
+  ensure
+    ENV["HOW_MODEL"] = original
+  end
+
+  def test_uses_env_var_when_set
+    original = ENV["HOW_MODEL"]
+    ENV["HOW_MODEL"] = "gpt-4.1"
+    assert_equal "gpt-4.1", How.selected_model
+  ensure
+    ENV["HOW_MODEL"] = original
+  end
+
+  def test_default_is_non_premium_model
+    refute_equal "claude-sonnet-4.5", How::DEFAULT_MODEL
+    assert_match(/\Agpt-/, How::DEFAULT_MODEL)
+  end
 end
 
 class TestSanitizeCommandOutput < Minitest::Test

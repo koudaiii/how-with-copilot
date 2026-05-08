@@ -68,11 +68,29 @@ git status             # ← appears at your prompt, ready to run
 
 `fix` exits with an error unless it can capture recent terminal output from [tmux](https://github.com/tmux/tmux), [GNU screen](https://www.gnu.org/software/screen/), or iTerm.
 
+## Model selection
+
+By default, `how` and `fix` use `gpt-5-mini`, which currently has a **0× premium request multiplier** on paid GitHub Copilot plans (effectively free). For translating natural language to a single shell command, this is more than capable, and avoids consuming a premium request on every invocation.
+
+You can override the model in two ways (CLI flag takes precedence over the environment variable):
+
+```zsh
+# 1) Per-invocation flag
+how --model gpt-4.1 list files sorted by size
+fix -m gpt-4.1
+
+# 2) Environment variable
+export HOW_MODEL=gpt-4.1
+how list files sorted by size
+```
+
+Any model accepted by `copilot --model` works. See [GitHub Copilot model multipliers](https://docs.github.com/en/copilot/concepts/billing/copilot-requests#model-multipliers) for which models cost premium requests.
+
 ## Differences from the original
 
 This is a fork of [kazuho/how](https://github.com/kazuho/how) that uses GitHub Copilot instead of OpenAI Codex. The main differences are:
 
 - Uses `copilot -p` in non-interactive JSON mode instead of `codex` CLI
 - Optimized prompts for GitHub Copilot's interface
-- No model selection (uses GitHub Copilot's default model)
+- Defaults to a non-premium model (`gpt-5-mini`) and supports `--model` / `HOW_MODEL`
 - Keeps the original `how` / `fix` workflow and shell-history integration

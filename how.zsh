@@ -74,21 +74,68 @@ _how_last_history_cmd() {
   return 1
 }
 
+_how_parse_model_flag() {
+  # Parses --model/-m from positional args.
+  # Sets HOW_PARSED_MODEL and HOW_PARSED_ARGS as global arrays/scalars.
+  typeset -ga HOW_PARSED_ARGS
+  HOW_PARSED_ARGS=()
+  HOW_PARSED_MODEL=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --model|-m)
+        if [[ $# -lt 2 ]]; then
+          echo "how: --model requires a value" >&2
+          return 1
+        fi
+        HOW_PARSED_MODEL="$2"
+        shift 2
+        ;;
+      --model=*)
+        HOW_PARSED_MODEL="${1#--model=}"
+        shift
+        ;;
+      --)
+        shift
+        HOW_PARSED_ARGS+=("$@")
+        break
+        ;;
+      *)
+        HOW_PARSED_ARGS+=("$1")
+        shift
+        ;;
+    esac
+  done
+  return 0
+}
+
 how() {
-  if [[ $# -eq 0 ]]; then
-    echo "Usage: how <what you want to do>" >&2
+  _how_parse_model_flag "$@" || return 1
+
+  if [[ ${#HOW_PARSED_ARGS[@]} -eq 0 ]]; then
+    echo "Usage: how [--model MODEL | -m MODEL] <what you want to do>" >&2
     return 1
   fi
 
-  _how_run how "$PWD" "$@"
+  if [[ -n "$HOW_PARSED_MODEL" ]]; then
+    HOW_MODEL="$HOW_PARSED_MODEL" _how_run how "$PWD" "${HOW_PARSED_ARGS[@]}"
+  else
+    _how_run how "$PWD" "${HOW_PARSED_ARGS[@]}"
+  fi
 }
 
 fix() {
+  _how_parse_model_flag "$@" || return 1
+
   local last_cmd
   if ! last_cmd=$(_how_last_history_cmd); then
     echo "fix: no previous command to fix" >&2
     return 1
   fi
 
-  _how_run fixit "$PWD" "$last_cmd" -- "$@"
+  if [[ -n "$HOW_PARSED_MODEL" ]]; then
+    HOW_MODEL="$HOW_PARSED_MODEL" _how_run fixit "$PWD" "$last_cmd" -- "${HOW_PARSED_ARGS[@]}"
+  else
+    _how_run fixit "$PWD" "$last_cmd" -- "${HOW_PARSED_ARGS[@]}"
+  fi
 }
