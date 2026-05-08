@@ -104,12 +104,29 @@ module How
     output.dup.force_encoding(Encoding::UTF_8).scrub.strip
   end
 
-  def terminal_output_required_for_fix
-    output = capture_terminal_output
-    return output if output
+  def shell_state_file
+    state_home = ENV["XDG_STATE_HOME"] || File.join(Dir.home, ".local", "state")
+    File.join(state_home, "how-with-copilot", "last-session.json")
+  end
 
-    $stderr.puts "fix: requires tmux, GNU screen, or iTerm so recent terminal output can be captured"
-    exit 1
+  def shell_state
+    path = shell_state_file
+    return nil unless File.exist?(path)
+
+    JSON.parse(File.read(path))
+  rescue JSON::ParserError, Errno::ENOENT
+    nil
+  end
+
+  def shell_state_terminal_output
+    output = shell_state&.dig("terminal_output")
+    return nil if output.nil? || output.empty?
+
+    normalize_terminal_output(output)
+  end
+
+  def terminal_output_for_fix
+    capture_terminal_output || shell_state_terminal_output
   end
 
   def build_how_prompt(cwd:, prompt:)
@@ -332,7 +349,7 @@ module How
       cwd: cwd,
       failed_cmd: failed_cmd,
       user_hint: user_hint,
-      terminal_output: terminal_output_required_for_fix
+      terminal_output: terminal_output_for_fix
     ))
   end
 end
