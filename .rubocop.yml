@@ -1,0 +1,70 @@
+AllCops:
+  TargetRubyVersion: 3.1
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - "vendor/**/*"
+
+plugins:
+  - rubocop-minitest
+  - rubocop-performance
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes
+
+Style/Documentation:
+  Enabled: false
+
+Style/StderrPuts:
+  Enabled: false
+
+Style/SpecialGlobalVars:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 120
+
+Metrics/MethodLength:
+  Max: 30
+  Exclude:
+    - "test_*.rb"
+
+Metrics/AbcSize:
+  Max: 30
+  Exclude:
+    - "test_*.rb"
+
+Metrics/CyclomaticComplexity:
+  Max: 12
+
+Metrics/PerceivedComplexity:
+  Max: 12
+
+Metrics/ModuleLength:
+  Enabled: false
+
+Metrics/BlockLength:
+  Exclude:
+    - "test_*.rb"
+
+Lint/ScriptPermission:
+  Enabled: false
+
+Style/OneClassPerFile:
+  Exclude:
+    - "test_*.rb"
+
+Style/FetchEnvVar:
+  Enabled: false
+
+Style/WordArray:
+  Enabled: false
+
+Layout/FirstArgumentIndentation:
+  Enabled: false
+
+Lint/UnusedBlockArgument:
+  Enabled: false
