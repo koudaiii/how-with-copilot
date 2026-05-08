@@ -86,6 +86,16 @@ how list files sorted by size
 
 Any model accepted by `copilot --model` works. See [GitHub Copilot model multipliers](https://docs.github.com/en/copilot/concepts/billing/copilot-requests#model-multipliers) for which models cost premium requests.
 
+## Version
+
+Both `how` and `fix` accept `--version` (or `-v`) to print the installed version:
+
+```
+$ how --version
+0.0.1
+```
+
+
 ## Differences from the original
 
 This is a fork of [kazuho/how](https://github.com/kazuho/how) that uses GitHub Copilot instead of OpenAI Codex. The main differences are:

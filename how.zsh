@@ -3,6 +3,82 @@
 #   source /path/to/how.zsh
 
 HOW_DIR="${${(%):-%N}:a:h}"
+HOW_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/how-with-copilot"
+HOW_STATE_FILE="$HOW_STATE_DIR/last-session.json"
+
+autoload -Uz add-zsh-hook
+
+_how_mkdir_state_dir() {
+  mkdir -p "$HOW_STATE_DIR" 2>/dev/null
+}
+
+_how_json_escape() {
+  local value="$1"
+  value=${value//\\/\\\\}
+  value=${value//\"/\\\"}
+  value=${value//$'\n'/\\n}
+  value=${value//$'\r'/\\r}
+  value=${value//$'\t'/\\t}
+  print -r -- "$value"
+}
+
+_how_capture_terminal_output() {
+  local output tty tmpfile app
+
+  if [[ -n "$TMUX" ]]; then
+    output=$(tmux capture-pane -p -S -80 2>/dev/null)
+  elif [[ -n "$STY" ]]; then
+    tmpfile="/tmp/how_screen_hardcopy.$$"
+    screen -X hardcopy "$tmpfile" >/dev/null 2>&1
+    [[ -f "$tmpfile" ]] && output=$(<"$tmpfile")
+    rm -f "$tmpfile"
+  elif [[ "$TERM_PROGRAM" == "iTerm.app" ]]; then
+    tty=$(tty 2>/dev/null) || return 1
+    for app in iTerm2 iTerm; do
+      output=$(osascript <<APPLESCRIPT 2>/dev/null
+tell application "$app"
+  repeat with aWindow in windows
+    repeat with aTab in tabs of aWindow
+      repeat with aSession in sessions of aTab
+        if tty of aSession is "$tty" then
+          return contents of aSession
+        end if
+      end repeat
+    end repeat
+  end repeat
+end tell
+return ""
+APPLESCRIPT
+)
+      [[ -n "$output" ]] && break
+    done
+  fi
+
+  [[ -n "$output" ]] || return 1
+  print -r -- "$output"
+}
+
+_how_record_preexec() {
+  _how_mkdir_state_dir
+  typeset -g HOW_LAST_EXEC_CMD="$1"
+}
+
+_how_record_precmd() {
+  _how_mkdir_state_dir
+
+  local last_status=$?
+  local last_cmd="${HOW_LAST_EXEC_CMD:-}"
+  local terminal_output=""
+
+  terminal_output=$(_how_capture_terminal_output 2>/dev/null || true)
+
+  cat >| "$HOW_STATE_FILE" <<JSON
+{"pwd":"$(_how_json_escape "$PWD")","last_cmd":"$(_how_json_escape "$last_cmd")","last_status":$last_status,"term_program":"$(_how_json_escape "${TERM_PROGRAM:-}")","terminal_output":"$(_how_json_escape "$terminal_output")"}
+JSON
+}
+
+add-zsh-hook preexec _how_record_preexec
+add-zsh-hook precmd _how_record_precmd
 
 # Run a backend command with a spinner, capturing stdout.
 # Explanation (stderr) passes through to the terminal.
@@ -110,6 +186,13 @@ _how_parse_model_flag() {
 }
 
 how() {
+  case "$1" in
+    --version|-v)
+      "$HOW_DIR/how-backend.rb" version
+      return $?
+      ;;
+  esac
+
   _how_parse_model_flag "$@" || return 1
 
   if [[ ${#HOW_PARSED_ARGS[@]} -eq 0 ]]; then
@@ -125,6 +208,13 @@ how() {
 }
 
 fix() {
+  case "$1" in
+    --version|-v)
+      "$HOW_DIR/how-backend.rb" version
+      return $?
+      ;;
+  esac
+
   _how_parse_model_flag "$@" || return 1
 
   local last_cmd
