@@ -8,6 +8,8 @@ require "tempfile"
 module How
   module_function
 
+  VERSION = "0.0.1"
+
   ITERM_APP_NAMES = ["iTerm2", "iTerm"].freeze
 
   def shell_env
@@ -360,8 +362,10 @@ if __FILE__ == $PROGRAM_NAME
     How.run_how(ARGV)
   when "fixit"
     How.run_fixit(ARGV)
+  when "version", "--version", "-v"
+    puts How::VERSION
   else
-    warn "Usage: how-backend.rb {how|fixit} ..."
+    warn "Usage: how-backend.rb {how|fixit|version} ..."
     exit 1
   end
 end

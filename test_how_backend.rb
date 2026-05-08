@@ -6,6 +6,30 @@ require "tmpdir"
 require "fileutils"
 require_relative "how-backend"
 
+class TestVersion < Minitest::Test
+  def test_version_is_semver
+    assert_match(/\A\d+\.\d+\.\d+\z/, How::VERSION)
+  end
+
+  def test_version_subcommand_prints_version
+    output = `ruby #{File.expand_path("how-backend.rb", __dir__)} version`
+    assert_equal "#{How::VERSION}\n", output
+    assert_equal 0, $?.exitstatus
+  end
+
+  def test_version_flag_prints_version
+    output = `ruby #{File.expand_path("how-backend.rb", __dir__)} --version`
+    assert_equal "#{How::VERSION}\n", output
+    assert_equal 0, $?.exitstatus
+  end
+
+  def test_short_version_flag_prints_version
+    output = `ruby #{File.expand_path("how-backend.rb", __dir__)} -v`
+    assert_equal "#{How::VERSION}\n", output
+    assert_equal 0, $?.exitstatus
+  end
+end
+
 class TestBuildHowPrompt < Minitest::Test
   def test_includes_cwd
     prompt = How.build_how_prompt(cwd: "/home/user", prompt: "list files")
