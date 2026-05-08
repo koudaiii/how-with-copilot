@@ -2,6 +2,8 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
+require "tmpdir"
+require "fileutils"
 require_relative "how-backend"
 
 class TestBuildHowPrompt < Minitest::Test
@@ -92,18 +94,37 @@ class TestCaptureTerminalOutput < Minitest::Test
   end
 end
 
-class TestTerminalOutputRequiredForFix < Minitest::Test
-  def test_exits_when_no_tmux_screen_or_iterm
-    original_tmux = ENV.delete("TMUX")
-    original_sty = ENV.delete("STY")
-    original_term_program = ENV.delete("TERM_PROGRAM")
+class TestTerminalOutputForFix < Minitest::Test
+  def test_returns_nil_when_no_capture_available
+    How.stub :capture_terminal_output, nil do
+      How.stub :shell_state_terminal_output, nil do
+        assert_nil How.terminal_output_for_fix
+      end
+    end
+  end
 
-    err = assert_raises(SystemExit) { How.terminal_output_required_for_fix }
-    assert_equal 1, err.status
-  ensure
-    ENV["TMUX"] = original_tmux if original_tmux
-    ENV["STY"] = original_sty if original_sty
-    ENV["TERM_PROGRAM"] = original_term_program if original_term_program
+  def test_uses_shell_state_output_as_fallback
+    How.stub :capture_terminal_output, nil do
+      How.stub :shell_state_terminal_output, "saved output" do
+        assert_equal "saved output", How.terminal_output_for_fix
+      end
+    end
+  end
+
+  def test_shell_state_terminal_output_reads_saved_file
+    Dir.mktmpdir do |dir|
+      old_xdg = ENV["XDG_STATE_HOME"]
+      ENV["XDG_STATE_HOME"] = dir
+      FileUtils.mkdir_p(File.join(dir, "how-with-copilot"))
+      File.write(
+        File.join(dir, "how-with-copilot", "last-session.json"),
+        %({"terminal_output":"line 1\\nline 2"})
+      )
+
+      assert_equal "line 1\nline 2", How.shell_state_terminal_output
+    ensure
+      ENV["XDG_STATE_HOME"] = old_xdg
+    end
   end
 end
 
