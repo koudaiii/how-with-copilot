@@ -68,6 +68,15 @@ git status             # ← appears at your prompt, ready to run
 
 `fix` exits with an error unless it can capture recent terminal output from [tmux](https://github.com/tmux/tmux), [GNU screen](https://www.gnu.org/software/screen/), or iTerm.
 
+### Version
+
+Both `how` and `fix` accept `--version` (or `-v`) to print the installed version:
+
+```
+$ how --version
+0.0.1
+```
+
 ## Differences from the original
 
 This is a fork of [kazuho/how](https://github.com/kazuho/how) that uses GitHub Copilot instead of OpenAI Codex. The main differences are:

@@ -75,6 +75,13 @@ _how_last_history_cmd() {
 }
 
 how() {
+  case "$1" in
+    --version|-v)
+      "$HOW_DIR/how-backend.rb" version
+      return $?
+      ;;
+  esac
+
   if [[ $# -eq 0 ]]; then
     echo "Usage: how <what you want to do>" >&2
     return 1
@@ -84,6 +91,13 @@ how() {
 }
 
 fix() {
+  case "$1" in
+    --version|-v)
+      "$HOW_DIR/how-backend.rb" version
+      return $?
+      ;;
+  esac
+
   local last_cmd
   if ! last_cmd=$(_how_last_history_cmd); then
     echo "fix: no previous command to fix" >&2
