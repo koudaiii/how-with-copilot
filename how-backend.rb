@@ -11,6 +11,12 @@ module How
   VERSION = "0.0.1"
 
   ITERM_APP_NAMES = ["iTerm2", "iTerm"].freeze
+  DEFAULT_MODEL = "gpt-5-mini"
+
+  def selected_model
+    value = ENV["HOW_MODEL"].to_s.strip
+    value.empty? ? DEFAULT_MODEL : value
+  end
 
   def shell_env
     shell = File.basename(ENV["SHELL"] || "sh")
@@ -178,6 +184,7 @@ module How
     cmd = [
       "copilot",
       "-p", prompt,
+      "--model", selected_model,
       "--allow-all-tools",
       "--output-format", "json",
       "--no-custom-instructions",
@@ -364,8 +371,10 @@ if __FILE__ == $PROGRAM_NAME
     How.run_fixit(ARGV)
   when "version", "--version", "-v"
     puts How::VERSION
+  when "default-model"
+    puts How::DEFAULT_MODEL
   else
-    warn "Usage: how-backend.rb {how|fixit|version} ..."
+    warn "Usage: how-backend.rb {how|fixit|version|default-model} ..."
     exit 1
   end
 end
