@@ -105,7 +105,7 @@ module How
   end
 
   def shell_state_file
-    state_home = ENV["XDG_STATE_HOME"] || File.join(ENV["HOME"].to_s, ".local", "state")
+    state_home = ENV["XDG_STATE_HOME"] || File.join(Dir.home, ".local", "state")
     File.join(state_home, "how-with-copilot", "last-session.json")
   end
 
