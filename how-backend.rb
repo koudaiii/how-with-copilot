@@ -371,8 +371,10 @@ if __FILE__ == $PROGRAM_NAME
     How.run_fixit(ARGV)
   when "version", "--version", "-v"
     puts How::VERSION
+  when "default-model"
+    puts How::DEFAULT_MODEL
   else
-    warn "Usage: how-backend.rb {how|fixit|version} ..."
+    warn "Usage: how-backend.rb {how|fixit|version|default-model} ..."
     exit 1
   end
 end

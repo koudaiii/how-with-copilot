@@ -185,6 +185,14 @@ _how_parse_model_flag() {
   return 0
 }
 
+_how_print_usage() {
+  local default_model
+  default_model=$("$HOW_DIR/how-backend.rb" default-model 2>/dev/null)
+  echo "Usage: how [--model MODEL | -m MODEL] <what you want to do>" >&2
+  [[ -n "$default_model" ]] && echo "  default model: $default_model" >&2
+  echo "  available models: https://docs.github.com/en/copilot/concepts/billing/copilot-requests#model-multipliers" >&2
+}
+
 how() {
   case "$1" in
     --version|-v)
@@ -196,7 +204,7 @@ how() {
   _how_parse_model_flag "$@" || return 1
 
   if [[ ${#HOW_PARSED_ARGS[@]} -eq 0 ]]; then
-    echo "Usage: how [--model MODEL | -m MODEL] <what you want to do>" >&2
+    _how_print_usage
     return 1
   fi
 
