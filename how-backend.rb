@@ -52,10 +52,20 @@ module How
         return output unless output.empty?
       end
     elsif iterm?
-      output = capture_iterm_output
+      output = capture_iterm_output(lines: lines)
       return output unless output.nil? || output.empty?
     end
     nil
+  end
+
+  # iTerm's `contents of aSession` returns the entire scrollback, which can be
+  # hundreds of KB. Passing that to `copilot -p` overflows the CLI's stack
+  # (RangeError: Maximum call stack size exceeded), so keep only the last N
+  # lines, matching the tmux/screen behavior.
+  def limit_to_last_lines(output, lines)
+    return output if output.nil? || output.empty?
+
+    output.lines.last(lines).join.strip
   end
 
   def iterm?
@@ -70,13 +80,15 @@ module How
     tty.empty? ? nil : tty
   end
 
-  def capture_iterm_output
+  def capture_iterm_output(lines: 50)
     tty = current_tty
     return nil if tty.nil?
 
     ITERM_APP_NAMES.each do |app_name|
       output = run_iterm_contents_script(app_name, tty)
-      return output unless output.nil? || output.empty?
+      next if output.nil? || output.empty?
+
+      return limit_to_last_lines(output, lines)
     end
 
     nil
@@ -124,15 +136,18 @@ module How
     nil
   end
 
-  def shell_state_terminal_output
+  def shell_state_terminal_output(lines: 50)
     output = shell_state&.dig("terminal_output")
     return nil if output.nil? || output.empty?
 
-    normalize_terminal_output(output)
+    # Older versions persisted the full scrollback here. A stale file can hold
+    # hundreds of KB, which overflows the copilot CLI's stack when sent via
+    # `-p`, so bound it the same way the live capture is bounded.
+    limit_to_last_lines(normalize_terminal_output(output), lines)
   end
 
-  def terminal_output_for_fix
-    capture_terminal_output || shell_state_terminal_output
+  def terminal_output_for_fix(lines: 50)
+    capture_terminal_output(lines: lines) || shell_state_terminal_output(lines: lines)
   end
 
   def build_how_prompt(cwd:, prompt:)
