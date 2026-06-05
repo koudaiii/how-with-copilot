@@ -16,7 +16,26 @@ _how_record_preexec() {
   typeset -g HOW_LAST_EXEC_CMD="$1"
 }
 
+# Records the exit status of the previous command so `fix` can short-circuit
+# when there is nothing to fix. `how`/`fix` invocations are ignored so the
+# status of the real command they operate on is preserved across a `fix` call.
+_how_record_precmd() {
+  local last_status=$?
+  local cmd="$HOW_LAST_EXEC_CMD"
+
+  # Strip leading VAR=value assignments (e.g. `HOW_MODEL=gpt-4.1 fix`).
+  while [[ "$cmd" == [A-Za-z_][A-Za-z0-9_]*=* && "$cmd" == *[[:space:]]* ]]; do
+    cmd="${cmd#*[[:space:]]}"
+  done
+
+  case "${cmd%%[[:space:]]*}" in
+    ""|fix|how) ;;
+    *) typeset -gi HOW_LAST_EXEC_STATUS=$last_status ;;
+  esac
+}
+
 add-zsh-hook preexec _how_record_preexec
+add-zsh-hook precmd _how_record_precmd
 
 # Run a backend command with a spinner, capturing stdout.
 # Explanation (stderr) passes through to the terminal.
@@ -167,6 +186,14 @@ fix() {
   if ! last_cmd=$(_how_last_history_cmd); then
     echo "fix: no previous command to fix" >&2
     return 1
+  fi
+
+  # Nothing to fix: the previous command succeeded and no instructions were
+  # given. Hand the command straight back instead of calling Copilot. With
+  # instructions, fall through so `fix <instructions>` can still modify it.
+  if [[ ${#HOW_PARSED_ARGS[@]} -eq 0 && "${HOW_LAST_EXEC_STATUS:-1}" -eq 0 ]]; then
+    print -rz -- "$last_cmd"
+    return 0
   fi
 
   if [[ -n "$HOW_PARSED_MODEL" ]]; then
