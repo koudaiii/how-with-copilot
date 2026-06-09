@@ -8,7 +8,7 @@ require "tempfile"
 module How
   module_function
 
-  VERSION = "0.1.0"
+  VERSION = "0.1.1"
 
   ITERM_APP_NAMES = ["iTerm2", "iTerm"].freeze
   DEFAULT_MODEL = "gpt-5-mini"
