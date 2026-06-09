@@ -116,6 +116,22 @@ class TestCaptureTerminalOutput < Minitest::Test
   ensure
     ENV["TERM_PROGRAM"] = original_term_program
   end
+
+  def test_capture_iterm_output_truncates_to_last_lines
+    original_term_program = ENV["TERM_PROGRAM"]
+    ENV["TERM_PROGRAM"] = "iTerm.app"
+
+    huge = (1..1000).map { |n| "line #{n}" }.join("\n")
+    How.stub :current_tty, "/dev/ttys001" do
+      How.stub :run_iterm_contents_script, huge do
+        output = How.capture_iterm_output(lines: 50)
+        assert_equal 50, output.lines.length
+        assert_equal "line 1000", output.lines.last
+      end
+    end
+  ensure
+    ENV["TERM_PROGRAM"] = original_term_program
+  end
 end
 
 class TestTerminalOutputForFix < Minitest::Test
@@ -146,6 +162,25 @@ class TestTerminalOutputForFix < Minitest::Test
       )
 
       assert_equal "line 1\nline 2", How.shell_state_terminal_output
+    ensure
+      ENV["XDG_STATE_HOME"] = old_xdg
+    end
+  end
+
+  def test_shell_state_terminal_output_truncates_stale_full_scrollback
+    Dir.mktmpdir do |dir|
+      old_xdg = ENV["XDG_STATE_HOME"]
+      ENV["XDG_STATE_HOME"] = dir
+      FileUtils.mkdir_p(File.join(dir, "how-with-copilot"))
+      huge = (1..1000).map { |n| "line #{n}" }.join("\n")
+      File.write(
+        File.join(dir, "how-with-copilot", "last-session.json"),
+        JSON.generate("terminal_output" => huge)
+      )
+
+      output = How.shell_state_terminal_output(lines: 50)
+      assert_equal 50, output.lines.length
+      assert_equal "line 1000", output.lines.last
     ensure
       ENV["XDG_STATE_HOME"] = old_xdg
     end

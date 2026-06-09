@@ -8,7 +8,7 @@
 
 The command uses GitHub Copilot CLI (via `copilot -p`) as the backend for interpreting the user input and generating the command line. The backend provides context about the current directory and shell environment to help Copilot generate appropriate commands.
 
-This repository also implements `fix`, which takes the previous shell command from history, optionally captures recent terminal output from `tmux` or GNU `screen`, and asks Copilot for a corrected command.
+This repository also implements `fix`, which takes the previous shell command from history, optionally captures recent terminal output from `tmux` or GNU `screen`, and asks Copilot for a corrected command. A `precmd` hook records the exit status of each real command (ignoring `how`/`fix` invocations); when the previous command succeeded and no instructions are given, `fix` short-circuits and returns that command without calling Copilot.
 
 ## Implementation using GitHub Copilot CLI
 

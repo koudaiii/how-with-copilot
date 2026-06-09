@@ -58,6 +58,8 @@ fix [optional instructions]
 
 Fixes or modifies the previous command from shell history. It inspects recent terminal output using [tmux](https://github.com/tmux/tmux), [GNU screen](https://www.gnu.org/software/screen/), or iTerm on macOS. With arguments, it modifies the command as instructed (e.g., `fix sort by date`).
 
+If the previous command **succeeded** and no instructions are given, there is nothing to fix — `fix` skips Copilot and hands the command straight back to your prompt. To modify a working command, pass instructions (e.g., `fix add -l`).
+
 ```
 $ gti status
 zsh: command not found: gti

@@ -3,78 +3,35 @@
 #   source /path/to/how.zsh
 
 HOW_DIR="${${(%):-%N}:a:h}"
-HOW_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/how-with-copilot"
-HOW_STATE_FILE="$HOW_STATE_DIR/last-session.json"
 
 autoload -Uz add-zsh-hook
 
-_how_mkdir_state_dir() {
-  mkdir -p "$HOW_STATE_DIR" 2>/dev/null
-}
-
-_how_json_escape() {
-  local value="$1"
-  value=${value//\\/\\\\}
-  value=${value//\"/\\\"}
-  value=${value//$'\n'/\\n}
-  value=${value//$'\r'/\\r}
-  value=${value//$'\t'/\\t}
-  print -r -- "$value"
-}
-
-_how_capture_terminal_output() {
-  local output tty tmpfile app
-
-  if [[ -n "$TMUX" ]]; then
-    output=$(tmux capture-pane -p -S -80 2>/dev/null)
-  elif [[ -n "$STY" ]]; then
-    tmpfile="/tmp/how_screen_hardcopy.$$"
-    screen -X hardcopy "$tmpfile" >/dev/null 2>&1
-    [[ -f "$tmpfile" ]] && output=$(<"$tmpfile")
-    rm -f "$tmpfile"
-  elif [[ "$TERM_PROGRAM" == "iTerm.app" ]]; then
-    tty=$(tty 2>/dev/null) || return 1
-    for app in iTerm2 iTerm; do
-      output=$(osascript <<APPLESCRIPT 2>/dev/null
-tell application "$app"
-  repeat with aWindow in windows
-    repeat with aTab in tabs of aWindow
-      repeat with aSession in sessions of aTab
-        if tty of aSession is "$tty" then
-          return contents of aSession
-        end if
-      end repeat
-    end repeat
-  end repeat
-end tell
-return ""
-APPLESCRIPT
-)
-      [[ -n "$output" ]] && break
-    done
-  fi
-
-  [[ -n "$output" ]] || return 1
-  print -r -- "$output"
-}
-
+# Records the just-executed command for `fix`. Kept intentionally lightweight:
+# terminal output is NOT captured here. Capturing it on every precmd ran a
+# synchronous osascript (~0.6s per prompt on iTerm) and made the terminal feel
+# choppy. `fix` captures the screen live at invocation time via the backend
+# (see how-backend.rb: terminal_output_for_fix), so a precmd snapshot is
+# redundant.
 _how_record_preexec() {
-  _how_mkdir_state_dir
   typeset -g HOW_LAST_EXEC_CMD="$1"
 }
 
+# Records the exit status of the previous command so `fix` can short-circuit
+# when there is nothing to fix. `how`/`fix` invocations are ignored so the
+# status of the real command they operate on is preserved across a `fix` call.
 _how_record_precmd() {
-  _how_mkdir_state_dir
-
   local last_status=$?
-  local last_cmd="${HOW_LAST_EXEC_CMD:-}"
-  local terminal_output=""
+  local cmd="$HOW_LAST_EXEC_CMD"
 
-  terminal_output=$(_how_capture_terminal_output 2>/dev/null || true)
+  # Strip leading VAR=value assignments (e.g. `HOW_MODEL=gpt-4.1 fix`).
+  while [[ "$cmd" == [A-Za-z_][A-Za-z0-9_]*=* && "$cmd" == *[[:space:]]* ]]; do
+    cmd="${cmd#*[[:space:]]}"
+  done
 
-  cat >| "$HOW_STATE_FILE" <<JSON
-{"pwd":"$(_how_json_escape "$PWD")","last_cmd":"$(_how_json_escape "$last_cmd")","last_status":$last_status,"term_program":"$(_how_json_escape "${TERM_PROGRAM:-}")","terminal_output":"$(_how_json_escape "$terminal_output")"}
-JSON
+  case "${cmd%%[[:space:]]*}" in
+    ""|fix|how) ;;
+    *) typeset -gi HOW_LAST_EXEC_STATUS=$last_status ;;
+  esac
 }
 
 add-zsh-hook preexec _how_record_preexec
@@ -229,6 +186,14 @@ fix() {
   if ! last_cmd=$(_how_last_history_cmd); then
     echo "fix: no previous command to fix" >&2
     return 1
+  fi
+
+  # Nothing to fix: the previous command succeeded and no instructions were
+  # given. Hand the command straight back instead of calling Copilot. With
+  # instructions, fall through so `fix <instructions>` can still modify it.
+  if [[ ${#HOW_PARSED_ARGS[@]} -eq 0 && "${HOW_LAST_EXEC_STATUS:-1}" -eq 0 ]]; then
+    print -rz -- "$last_cmd"
+    return 0
   fi
 
   if [[ -n "$HOW_PARSED_MODEL" ]]; then
